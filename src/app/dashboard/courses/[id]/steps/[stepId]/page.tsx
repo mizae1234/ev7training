@@ -326,12 +326,8 @@ function QuizPlayer({
         filtered = allQs.filter((q: QuizQuestion) => stepQIds.includes(q.id))
       }
 
-      // Shuffle and pick num_questions
-      const shuffled = filtered.sort(() => Math.random() - 0.5)
-      const pick = step.num_questions && step.num_questions < shuffled.length
-        ? shuffled.slice(0, step.num_questions)
-        : shuffled
-      setQuestions(pick)
+      // Use questions in the order admin selected
+      setQuestions(filtered)
     } catch (err) {
       console.error(err)
     } finally {
