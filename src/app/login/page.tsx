@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter()
   const [nationalId, setNationalId] = useState('')
   const [dob, setDob] = useState('') // raw digits ddmmyyyy
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -30,8 +31,29 @@ export default function LoginPage() {
       return
     }
 
+    // If password is provided, use it instead of DOB
+    if (password) {
+      try {
+        const result = await signIn('driver-login', {
+          national_id: nationalId,
+          password: password,
+          redirect: false,
+        })
+        if (result?.error) {
+          setError('รหัสผ่านไม่ถูกต้อง หรือไม่พบข้อมูลในระบบ')
+        } else {
+          router.push('/dashboard')
+        }
+      } catch {
+        setError('เกิดข้อผิดพลาด กรุณาลองใหม่')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     if (dob.length !== 8) {
-      setError('กรุณากรอกวันเดือนปีเกิดให้ครบ 8 หลัก เช่น 15032528')
+      setError('กรุณากรอกวันเดือนปีเกิดให้ครบ 8 หลัก หรือใส่รหัสผ่าน')
       setLoading(false)
       return
     }
@@ -129,9 +151,30 @@ export default function LoginPage() {
                 value={dob}
                 onChange={handleDobChange}
                 className="input-field font-mono text-lg tracking-wider"
-                required
               />
               <p className="text-xs text-gray-400 mt-1">{dob.length}/8 หลัก (วันเดือนปี พ.ศ.)</p>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-white px-3 text-gray-400">หรือ</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                รหัสผ่าน
+              </label>
+              <input
+                type="password"
+                placeholder="ใส่รหัสผ่าน (สำหรับทดสอบ)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-field text-lg"
+              />
             </div>
 
             <button

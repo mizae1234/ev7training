@@ -11,12 +11,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         national_id: { label: 'National ID', type: 'text' },
         date_of_birth: { label: 'Date of Birth', type: 'text' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         const nationalId = credentials?.national_id as string
         const dob = credentials?.date_of_birth as string
+        const password = credentials?.password as string
 
-        if (!nationalId || !dob) return null
+        if (!nationalId) return null
 
         const driver = await prisma.driver.findUnique({
           where: { national_id: nationalId },
@@ -25,14 +27,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!driver) return null
         if (driver.status === 'INACTIVE') return null
 
-        // Compare date of birth
+        // Option 1: Password login (PASS_FOR_ALL)
+        if (password && process.env.PASS_FOR_ALL && password === process.env.PASS_FOR_ALL) {
+          return {
+            id: driver.id,
+            name: driver.full_name,
+            email: driver.national_id,
+            role: 'driver',
+          }
+        }
+
+        // Option 2: DOB login
+        if (!dob) return null
         const driverDob = driver.date_of_birth.toISOString().split('T')[0]
         if (driverDob !== dob) return null
 
         return {
           id: driver.id,
           name: driver.full_name,
-          email: driver.national_id, // using email field to store national_id
+          email: driver.national_id,
           role: 'driver',
         }
       },
