@@ -8,6 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
+    const courseId = formData.get('courseId') as string | null
 
     if (!file) {
       return NextResponse.json({ error: 'ไม่พบไฟล์' }, { status: 400 })
@@ -31,14 +32,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate unique filename
+    // Generate unique filename with courseId subfolder
     const ext = file.name.split('.').pop() || 'mp4'
     const timestamp = Date.now()
     const safeName = file.name
       .replace(/\.[^/.]+$/, '') // remove extension
       .replace(/[^a-zA-Z0-9ก-๙_-]/g, '_') // sanitize
       .slice(0, 50)
-    const key = `ev7training/video/${timestamp}_${safeName}.${ext}`
+
+    // Use courseId as subfolder if provided, otherwise fall back to generic video folder
+    const folder = courseId
+      ? `ev7training/courses/${courseId}`
+      : `ev7training/video`
+    const key = `${folder}/${timestamp}_${safeName}.${ext}`
 
     // Read file into buffer and use multipart upload
     const arrayBuffer = await file.arrayBuffer()

@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { PlayCircle, ClipboardCheck, Award, ChevronRight, CheckCircle2, Lock, AlertCircle } from 'lucide-react'
+import { ClipboardCheck, Award, ChevronRight, CheckCircle2, Lock, BookOpen } from 'lucide-react'
 
 interface ProgressData {
   videoProgress: number
@@ -16,22 +16,38 @@ interface ProgressData {
   onboardingStatus: string
 }
 
+interface CourseItem {
+  id: string
+  title: string
+  description: string | null
+  steps: { id: string; title: string; step_type: string; completed: boolean }[]
+  completedSteps: number
+  totalSteps: number
+  courseCompleted: boolean
+}
+
 export default function DashboardPage() {
   const { data: session } = useSession()
   const [progress, setProgress] = useState<ProgressData | null>(null)
+  const [courses, setCourses] = useState<CourseItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchProgress()
+    fetchAll()
   }, [])
 
-  const fetchProgress = async () => {
+  const fetchAll = async () => {
     try {
-      const res = await fetch('/api/driver/progress')
-      const data = await res.json()
-      setProgress(data)
+      const [progressRes, coursesRes] = await Promise.all([
+        fetch('/api/driver/progress'),
+        fetch('/api/driver/courses'),
+      ])
+      const progressData = await progressRes.json()
+      const coursesData = await coursesRes.json()
+      setProgress(progressData)
+      setCourses(coursesData.courses || [])
     } catch (err) {
-      console.error('Failed to fetch progress:', err)
+      console.error('Failed to fetch:', err)
     } finally {
       setLoading(false)
     }
@@ -45,41 +61,6 @@ export default function DashboardPage() {
     )
   }
 
-  const steps = [
-    {
-      id: 'video',
-      title: 'ดูวิดีโออบรม',
-      desc: `ดูวิดีโอให้ครบ 95% - ปัจจุบัน ${Math.round(progress?.videoProgress || 0)}%`,
-      icon: PlayCircle,
-      status: progress?.videoCompleted ? 'completed' : 'active',
-      href: '/dashboard/training',
-      color: 'blue',
-    },
-    {
-      id: 'quiz',
-      title: 'ทำแบบทดสอบ',
-      desc: progress?.quizPassed 
-        ? `ผ่านแล้ว คะแนน ${progress.quizScore}%`
-        : progress?.videoCompleted 
-          ? `ทำแบบทดสอบ (${progress?.quizAttempts || 0}/${progress?.maxAttempts || 3} ครั้ง)`
-          : 'ต้องดูวิดีโอให้ครบก่อน',
-      icon: ClipboardCheck,
-      status: progress?.quizPassed ? 'completed' : progress?.videoCompleted ? 'active' : 'locked',
-      href: '/dashboard/quiz',
-      color: 'amber',
-    },
-    {
-      id: 'certificate',
-      title: 'รับใบ Certificate',
-      desc: progress?.certificateNo
-        ? `Certificate: ${progress.certificateNo}`
-        : 'จะได้รับเมื่อสอบผ่าน',
-      icon: Award,
-      status: progress?.certificateNo ? 'completed' : progress?.quizPassed ? 'active' : 'locked',
-      href: '/dashboard/certificate',
-      color: 'emerald',
-    },
-  ]
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -150,43 +131,58 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Step Cards */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-gray-900">ขั้นตอนการอบรม</h2>
-        {steps.map((step, i) => (
-          <Link
-            key={step.id}
-            href={step.status === 'locked' ? '#' : step.href}
-            className={`block stat-card p-5 ${step.status === 'locked' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-            style={{ animationDelay: `${i * 0.1}s` }}
-          >
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                step.status === 'completed'
-                  ? 'bg-ev7-100 text-ev7-600'
-                  : step.status === 'active'
-                    ? 'bg-amber-100 text-amber-600'
-                    : 'bg-gray-100 text-gray-400'
-              }`}>
-                {step.status === 'completed' ? (
-                  <CheckCircle2 className="w-6 h-6" />
-                ) : step.status === 'locked' ? (
-                  <Lock className="w-6 h-6" />
-                ) : (
-                  <step.icon className="w-6 h-6" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900">{step.title}</h3>
-                <p className="text-sm text-gray-500 truncate">{step.desc}</p>
-              </div>
-              {step.status !== 'locked' && (
-                <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
-              )}
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* Multi-Step Courses Section */}
+      {courses.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-ev7-600" />
+            หลักสูตรอบรม
+          </h2>
+          {courses.map((course) => {
+            const pct = course.totalSteps > 0
+              ? Math.round((course.completedSteps / course.totalSteps) * 100)
+              : 0
+            return (
+              <Link
+                key={course.id}
+                href={`/dashboard/courses/${course.id}`}
+                className="block stat-card p-5 cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                    course.courseCompleted
+                      ? 'bg-ev7-100 text-ev7-600'
+                      : 'bg-blue-50 text-blue-600'
+                  }`}>
+                    {course.courseCompleted ? (
+                      <CheckCircle2 className="w-6 h-6" />
+                    ) : (
+                      <BookOpen className="w-6 h-6" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900">{course.title}</h3>
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            course.courseCompleted ? 'bg-ev7-500' : 'bg-blue-500'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                        {course.completedSteps}/{course.totalSteps} ขั้นตอน
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

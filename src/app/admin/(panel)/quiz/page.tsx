@@ -105,7 +105,8 @@ export default function QuizManagementPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <>
+      <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">จัดการข้อสอบ</h1>
@@ -156,6 +157,7 @@ export default function QuizManagementPage() {
             </div>
           )
         })}
+      </div>
       </div>
 
       {/* Add/Edit Modal */}
@@ -216,6 +218,6 @@ export default function QuizManagementPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

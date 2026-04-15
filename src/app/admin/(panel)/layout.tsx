@@ -3,13 +3,13 @@
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Car, LayoutDashboard, Users, PlayCircle, ClipboardCheck, Award, LogOut, Menu, X, ChevronRight } from 'lucide-react'
+import { Car, LayoutDashboard, Users, ClipboardCheck, Award, LogOut, Menu, X, ChevronRight, BookOpen } from 'lucide-react'
 import { useState } from 'react'
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'แดชบอร์ด' },
+  { href: '/admin/courses', icon: BookOpen, label: 'จัดการหลักสูตร' },
   { href: '/admin/drivers', icon: Users, label: 'จัดการคนขับ' },
-  { href: '/admin/videos', icon: PlayCircle, label: 'จัดการวิดีโอ' },
   { href: '/admin/quiz', icon: ClipboardCheck, label: 'จัดการข้อสอบ' },
   { href: '/admin/certificates', icon: Award, label: 'จัดการ Certificate' },
 ]

@@ -31,6 +31,8 @@ model Driver {
   certificates      Certificate[]
   quiz_attempts     QuizAttempt[]
   video_progress    VideoProgress[]
+  course_attempts   CourseAttempt[]
+  step_progresses   CourseStepProgress[]
 
   @@map("drivers")
 }
@@ -112,6 +114,90 @@ model Certificate {
   driver         Driver            @relation(fields: [driver_id], references: [id], onDelete: Cascade)
 
   @@map("certificates")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  pass_score  Int      @default(80)
+  is_active   Boolean  @default(true)
+  order_num   Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  steps       CourseStep[]
+  attempts    CourseAttempt[]
+
+  @@map("courses")
+}
+
+model CourseStep {
+  id                        String   @id @default(cuid())
+  course_id                 String
+  title                     String
+  step_type                 StepType
+  order_num                 Int      @default(0)
+  is_required               Boolean  @default(true)
+  
+  // For VIDEO step
+  video_url                 String?
+  video_required_percentage Int?
+
+  // For QUIZ step
+  num_questions             Int?
+  question_ids              Json?
+
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+
+  course                    Course               @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  progress                  CourseStepProgress[]
+
+  @@map("course_steps")
+}
+
+model CourseStepProgress {
+  id               String   @id @default(cuid())
+  driver_id        String
+  step_id          String
+  completed        Boolean  @default(false)
+  
+  // For VIDEO step
+  max_watched_time Float?
+  total_duration   Float?
+  
+  // For QUIZ step
+  score            Float?
+
+  updated_at       DateTime @updatedAt
+
+  driver           Driver     @relation(fields: [driver_id], references: [id], onDelete: Cascade)
+  step             CourseStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
+
+  @@unique([driver_id, step_id])
+  @@map("course_step_progress")
+}
+
+model CourseAttempt {
+  id           String    @id @default(cuid())
+  driver_id    String
+  course_id    String
+  passed       Boolean   @default(false)
+  score        Float?
+  completed_at DateTime?
+  created_at   DateTime  @default(now())
+
+  driver       Driver    @relation(fields: [driver_id], references: [id], onDelete: Cascade)
+  course       Course    @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@map("course_attempts")
+}
+
+
+enum StepType {
+  VIDEO
+  QUIZ
 }
 
 enum DriverStatus {
