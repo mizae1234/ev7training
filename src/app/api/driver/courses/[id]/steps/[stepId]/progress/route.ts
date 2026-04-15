@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { generateCertificateNo } from '@/lib/utils'
 
 // POST = save video progress, PUT = submit quiz
 export async function POST(
@@ -12,7 +13,7 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { stepId } = await params
+  const { id: courseId, stepId } = await params
   const driverId = session.user.id
   const body = await request.json()
   const { max_watched_time, total_duration, completed } = body
@@ -40,6 +41,10 @@ export async function POST(
     },
   })
 
+  if (completed) {
+    await checkCourseCompletion(courseId, driverId, 100)
+  }
+
   return NextResponse.json(progress)
 }
 
@@ -53,7 +58,7 @@ export async function PUT(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { stepId } = await params
+  const { id: courseId, stepId } = await params
   const driverId = session.user.id
   const body = await request.json()
   const { answers } = body // { questionId: selectedIndex }
@@ -87,7 +92,11 @@ export async function PUT(
   })
 
   const score = questions.length > 0 ? (correct / questions.length) * 100 : 0
-  const passed = score >= 80 // default pass score
+  
+  // get course to find its pass_score
+  const course = await prisma.course.findUnique({ where: { id: courseId } })
+  const coursePassScore = course?.pass_score || 80
+  const passed = score >= coursePassScore
 
   // Save progress
   await prisma.courseStepProgress.upsert({
@@ -106,6 +115,10 @@ export async function PUT(
     },
   })
 
+  if (passed) {
+    await checkCourseCompletion(courseId, driverId, score)
+  }
+
   return NextResponse.json({
     score,
     passed,
@@ -113,4 +126,74 @@ export async function PUT(
     total: questions.length,
     correct,
   })
+}
+
+// Check and generate certificate if all required steps are completed
+async function checkCourseCompletion(courseId: string, driverId: string, finalScore: number) {
+  // Get all required steps for the course
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    include: { steps: { where: { is_required: true } } }
+  })
+  
+  if (!course || course.steps.length === 0) return false
+
+  // Get driver's completed steps
+  const progressList = await prisma.courseStepProgress.findMany({
+    where: { 
+      driver_id: driverId, 
+      step_id: { in: course.steps.map(s => s.id) }, 
+      completed: true 
+    }
+  })
+
+  // Has completed all required steps?
+  if (progressList.length >= course.steps.length) {
+    // 1. Mark course attempt as passed
+    const existingAttempt = await prisma.courseAttempt.findFirst({
+      where: { driver_id: driverId, course_id: courseId }
+    })
+    
+    if (existingAttempt) {
+      await prisma.courseAttempt.update({
+        where: { id: existingAttempt.id },
+        data: { passed: true, score: finalScore, completed_at: new Date() }
+      })
+    } else {
+      await prisma.courseAttempt.create({
+        data: {
+          driver_id: driverId,
+          course_id: courseId,
+          passed: true,
+          score: finalScore,
+          completed_at: new Date(),
+        }
+      })
+    }
+    
+    // 2. Generate certificate if not exists
+    const existingCert = await prisma.certificate.findFirst({
+      where: { driver_id: driverId }
+    })
+    
+    if (!existingCert) {
+      const certNo = generateCertificateNo()
+      await prisma.certificate.create({
+        data: {
+          certificate_no: certNo,
+          driver_id: driverId,
+          score: finalScore,
+        }
+      })
+      
+      // Update driver status
+      await prisma.driver.update({
+        where: { id: driverId },
+        data: { onboarding_status: 'PASSED' }
+      })
+    }
+    
+    return true
+  }
+  return false
 }
