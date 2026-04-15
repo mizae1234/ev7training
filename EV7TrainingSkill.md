@@ -108,6 +108,7 @@ model Question {
   question_text  String
   options        Json     // JSON array ของ string เช่น ["ก", "ข", "ค", "ง"]
   correct_answer Int      // 0-indexed index ของ options ที่ถูก
+  category       String?  // หมวดหมู่ (autocomplete ตอนเพิ่ม)
   is_active      Boolean  @default(true)
   order_num      Int      @default(0)
   created_at     DateTime @default(now())
@@ -116,6 +117,7 @@ model Question {
 }
 ```
 > **Pattern**: `options` เก็บเป็น JSON string ใน DB แต่ต้อง `JSON.parse()` เมื่ออ่านออกมา
+> **Pattern**: `category` ใช้ `<datalist>` สำหรับ Auto-complete ในหน้า Admin เพื่อให้ง่ายต่อการพิมพ์หมวดหมู่เดิมที่มีอยู่
 
 #### `QuizConfig` (Global config — 1 record)
 ```prisma
@@ -157,6 +159,70 @@ model Certificate {
   revoked_reason String?
   driver         Driver            @relation(...)
   @@map("certificates")
+}
+```
+
+#### `Course` & `CourseStep` (Modular Architecture)
+```prisma
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  pass_score  Int      @default(80)
+  is_active   Boolean  @default(true)
+  order_num   Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  steps       CourseStep[]
+  attempts    CourseAttempt[]
+  @@map("courses")
+}
+
+model CourseStep {
+  id                        String   @id @default(cuid())
+  course_id                 String
+  title                     String
+  step_type                 StepType // VIDEO | QUIZ
+  order_num                 Int      @default(0)
+  is_required               Boolean  @default(true)
+  // For VIDEO step
+  video_url                 String?
+  video_required_percentage Int?
+  // For QUIZ step
+  num_questions             Int?
+  question_ids              Json?
+  course                    Course               @relation(...)
+  progress                  CourseStepProgress[]
+  @@map("course_steps")
+}
+
+model CourseStepProgress {
+  id               String   @id @default(cuid())
+  driver_id        String
+  step_id          String
+  completed        Boolean  @default(false)
+  // For VIDEO step
+  max_watched_time Float?
+  total_duration   Float?
+  // For QUIZ step
+  score            Float?
+  driver           Driver     @relation(...)
+  step             CourseStep @relation(...)
+  @@unique([driver_id, step_id])
+  @@map("course_step_progress")
+}
+
+model CourseAttempt {
+  id           String    @id @default(cuid())
+  driver_id    String
+  course_id    String
+  passed       Boolean   @default(false)
+  score        Float?
+  completed_at DateTime?
+  created_at   DateTime  @default(now())
+  driver       Driver    @relation(...)
+  course       Course    @relation(...)
+  @@map("course_attempts")
 }
 ```
 
@@ -530,33 +596,25 @@ npm run dev  # uses --turbopack
 
 ---
 
-## 17. Planned Feature: Step-Based Courses
+## 17. Modular Course Architecture (Step-Based Courses)
 
-> Feature ที่กำลังวางแผนพัฒนา (ยังไม่ implement)
+> ใช้ออกแบบหลักสูตรเป็นขั้นตอนแบบยืดหยุ่น (Video สลับกับ Quiz ได้ไร้ขีดจำกัด)
 
-**แนวคิด**: เพิ่ม Course ที่มีหลาย Steps — แต่ละ Step เป็น VIDEO หรือ QUIZ  
+**แนวคิด**: อาศัยข้อมูลจากตาราง `Course`, `CourseStep` และ `CourseStepProgress`
 
-**Models ที่จะเพิ่ม**:
-```
-Course          — id, title, description, pass_score, is_active, order_num
-CourseStep      — id, course_id, step_type (VIDEO|QUIZ), order_num, title
-                  video_url, video_required_percentage (สำหรับ VIDEO)
-                  num_questions, question_ids Json (สำหรับ QUIZ — ดึงจาก master Question)
-CourseStepProgress — id, driver_id, step_id, completed, score, max_watched_time
-CourseAttempt   — id, driver_id, course_id, passed, score, completed_at
-```
+**Admin UI Pattern (Course Builder)**:
+- ลิสต์หลักสูตรทั้งหมด รองรับการจัดการผ่านเมนูจุดสามจุด (Kebab Menu) สำหรับ เปิด/ปิด แก้ไข ลบ
+- เพิ่ม Step ได้ 2 แบบคือ:
+  - **VIDEO**: Upload เข้า S3 ทันที (จำกัด 500MB) หรือแปะ URL พร้อมกำหนด % ความคืบหน้า (เช่น 95%) 
+  - **QUIZ**: แสดง Modal เลือก Questions จากตาราง `Question` (Master Bank) ด้วย checkbox
+- **Master Question Category**: การเพิ่มข้อสอบมีการผูก "หมวดหมู่ (category)" ผ่าน `<datalist>` Auto-complete เพื่อให้มีหมวดหมู่ที่เป็นมาตรฐาน จากนั้นตอนดึงคำถามมาใส่ใน Course Builder สามารถ Filter ด้วยหมวดหมู่เหล่านั้นได้
 
-**Key Pattern สำหรับ Quiz Step**:
-- เก็บ `question_ids` เป็น JSON array ของ Question IDs จาก master
-- ตอน serve quiz → fetch เฉพาะ questions ที่ถูกเลือก แล้วสุ่มตาม `num_questions`
-- Admin สร้าง step แล้วเลือก Questions จาก master pool ด้วย checkbox
-
-**Admin UI pattern**:
-```
-Course Builder → เพิ่ม Step → เลือก type (VIDEO/QUIZ)
-  VIDEO: Upload หรือใส่ URL + กำหนด % ที่ต้องดู
-  QUIZ: เลือก Questions จาก Master (checkbox) + จำนวนที่สุ่มออกสอบ
-```
+**Driver UI & Progress (Step Player)**:
+- ทุกครั้งที่เริ่มเรียนระบบสร้างหรือเรียกใช้ `CourseAttempt`
+- แถบ Progress Bar ด้านบน: สำหรับขั้นตอนที่ **Unlocked** แล้ว คนขับสามารถคลิกกระโดดข้ามไปดู/ทำแบบทดสอบซ้ำได้เสรี ช่วยเพิ่มประสบการณ์ให้ไม่ต้องกดกลับหน้าหลักบ่อยๆ
+- **Manual Progression**: เมื่อดูคลิปจบ หรือ สอบเสร็จ ระบบ**ไม่เปลี่ยนหน้าให้อัตโนมัติ** แต่จะปรับปุ่มให้สามารถกด "ไปขั้นตอนถัดไป" ได้เอง เพื่อไม่ให้หน้าเด้งเปลี่ยนกระทันหันเกินไป
+- หน้า Quiz แสดงผลแบบ Clean UI โดยส่วนของการเฉลย "ซ่อน/พับเก็บอยู่ด้านล่าง แบบ expandable" ให้ดูรายละเอียดได้หากต้องการ
+- เมื่อถึงขั้นตอนสุดท้ายแล้วผ่าน ระบบจะ Redirect เพื่อรับ Certificate ทันที
 
 ---
 
