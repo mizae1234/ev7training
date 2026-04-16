@@ -16,6 +16,7 @@ interface StepData {
   video_required_percentage: number | null
   num_questions: number | null
   question_ids: string[] | null
+  is_required: boolean
   completed: boolean
   score: number | null
   max_watched_time: number | null
@@ -357,6 +358,18 @@ function VideoPlayer({
             </button>
           </div>
         )}
+
+        {!completed && !step.is_required && (
+          <div className="mt-6 border border-dashed border-gray-200 rounded-xl p-4 text-center bg-gray-50">
+            <p className="text-sm text-gray-500 mb-3">วิดีโอนี้ไม่บังคับดู คุณสามารถข้ามไปขั้นตอนถัดไปได้เลย</p>
+            <button
+              onClick={() => onComplete(true)}
+              className="btn-secondary w-full py-2.5 text-sm font-medium"
+            >
+              ข้ามขั้นตอนนี้ (Skip)
+            </button>
+          </div>
+        )}
       </div>
     </>
   )
@@ -692,6 +705,18 @@ function QuizPlayer({
           </button>
         )}
       </div>
+
+      {!step.is_required && !step.completed && (
+        <div className="mt-2 border border-dashed border-gray-200 rounded-xl p-4 text-center bg-gray-50">
+          <p className="text-sm text-gray-500 mb-3">แบบทดสอบนี้ไม่บังคับทำ หากดูเป็นความรู้สามารถข้ามไปได้เลย</p>
+          <button
+            onClick={() => onComplete(true)}
+            className="btn-secondary w-full py-2.5 text-sm font-medium"
+          >
+            ข้ามแบบทดสอบ (Skip)
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -132,7 +132,9 @@ export default function CoursesPage() {
                         <ClipboardCheck className="w-3.5 h-3.5" />
                         {quizSteps.length} แบบทดสอบ
                       </span>
-                      <span>คะแนนผ่าน {course.pass_score}%</span>
+                      <span>
+                        {course.pass_score === 0 ? 'ไม่ต้องสอบ' : `คะแนนผ่าน ${course.pass_score}%`}
+                      </span>
                       <span>{course._count.attempts} ผู้เข้าเรียน</span>
                     </div>
                   </div>
@@ -191,9 +193,13 @@ export default function CoursesPage() {
                   min={0}
                   max={100}
                   value={form.pass_score}
-                  onChange={(e) => setForm({ ...form, pass_score: parseInt(e.target.value) || 80 })}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setForm({ ...form, pass_score: isNaN(val) ? 0 : val })
+                  }}
                   className="input-field w-32"
                 />
+                <p className="text-xs text-gray-500 mt-2">ใส่ 0 หากเป็นคอร์สให้ความรู้ (Knowledge) ที่ไม่ต้องมีการสอบผ่าน</p>
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowCreate(false)} className="btn-secondary flex-1 py-3">ยกเลิก</button>

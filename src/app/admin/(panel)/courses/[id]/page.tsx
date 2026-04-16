@@ -63,6 +63,7 @@ export default function CourseBuilderPage() {
     video_required_percentage: 95,
     num_questions: 10,
     question_ids: [] as string[],
+    is_required: true,
   })
 
   // Edit step
@@ -73,6 +74,7 @@ export default function CourseBuilderPage() {
     video_required_percentage: 95,
     num_questions: 10,
     question_ids: [] as string[],
+    is_required: true,
   })
 
   // Course editing
@@ -159,10 +161,11 @@ export default function CourseBuilderPage() {
           video_required_percentage: addStepType === 'VIDEO' ? stepForm.video_required_percentage : undefined,
           num_questions: addStepType === 'QUIZ' ? stepForm.num_questions : undefined,
           question_ids: addStepType === 'QUIZ' ? stepForm.question_ids : undefined,
+          is_required: stepForm.is_required,
         }),
       })
       setShowAddStep(false)
-      setStepForm({ title: '', video_url: '', video_required_percentage: 95, num_questions: 10, question_ids: [] })
+      setStepForm({ title: '', video_url: '', video_required_percentage: 95, num_questions: 10, question_ids: [], is_required: true })
       fetchCourse()
     } finally {
       setSaving(false)
@@ -183,6 +186,7 @@ export default function CourseBuilderPage() {
       video_required_percentage: step.video_required_percentage || 95,
       num_questions: step.num_questions || 10,
       question_ids: qIds,
+      is_required: step.is_required ?? true,
     })
     if (step.step_type === 'QUIZ') fetchMasterQuestions()
   }
@@ -196,6 +200,7 @@ export default function CourseBuilderPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: editForm.title,
+          is_required: editForm.is_required,
           ...(step?.step_type === 'VIDEO' && {
             video_url: editForm.video_url,
             video_required_percentage: editForm.video_required_percentage,
@@ -377,10 +382,14 @@ export default function CourseBuilderPage() {
                   min={0}
                   max={100}
                   value={courseForm.pass_score}
-                  onChange={(e) => setCourseForm({ ...courseForm, pass_score: parseInt(e.target.value) || 80 })}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setCourseForm({ ...courseForm, pass_score: isNaN(val) ? 0 : val })
+                  }}
                   className="input-field w-24 text-sm"
                 />
                 <span className="text-sm text-gray-500">%</span>
+                <span className="text-xs text-gray-400 ml-2">(ใส่ 0 หากเป็นคอร์สให้ความรู้ที่ไม่ต้องมีสอบ)</span>
                 <button onClick={handleSaveCourseInfo} disabled={saving} className="btn-primary text-sm py-1.5 px-4">
                   <Save className="w-3.5 h-3.5" />
                   บันทึก
@@ -405,7 +414,7 @@ export default function CourseBuilderPage() {
               </div>
               {course.description && <p className="text-sm text-gray-500 mt-1">{course.description}</p>}
               <p className="text-xs text-gray-400 mt-1">
-                คะแนนผ่าน {course.pass_score}% • {course.steps.length} ขั้นตอน • {course._count.attempts} ผู้เข้าเรียน
+                {course.pass_score === 0 ? 'ไม่ต้องสอบ' : `คะแนนผ่าน ${course.pass_score}%`} • {course.steps.length} ขั้นตอน • {course._count.attempts} ผู้เข้าเรียน
               </p>
             </div>
           )}
@@ -415,7 +424,9 @@ export default function CourseBuilderPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="stat-card text-center">
-          <div className="text-3xl font-bold text-gray-900">{course.pass_score}%</div>
+          <div className={`font-bold text-gray-900 ${course.pass_score === 0 ? 'text-xl mt-1' : 'text-3xl'}`}>
+            {course.pass_score === 0 ? 'ไม่มีสอบ' : `${course.pass_score}%`}
+          </div>
           <div className="text-xs text-gray-500 mt-1">คะแนนผ่าน</div>
         </div>
         <div className="stat-card text-center">
@@ -524,6 +535,19 @@ export default function CourseBuilderPage() {
                         onToggle={(id) => toggleQuestion(id, 'edit')}
                       />
                     )}
+
+                    <div className="pt-2 border-t border-gray-100">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={editForm.is_required}
+                          onChange={(e) => setEditForm({ ...editForm, is_required: e.target.checked })}
+                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
+                        />
+                        <span className="text-sm font-medium text-gray-700">บังคับเรียนขั้นตอนนี้ (Lock)</span>
+                      </label>
+                      <p className="text-xs text-gray-500 ml-6 pt-0.5">ถ้าติ๊กออก ผู้เรียนจะสามารถกดข้ามขั้นตอนนี้หรือกระโดดไปเรียนจุดอื่นได้อิสระโดยไม่ต้องดูจบ</p>
+                    </div>
 
                     <div className="flex gap-2">
                       <button onClick={() => handleSaveStep(step.id)} disabled={saving} className="btn-primary text-xs py-1.5 px-3">
@@ -744,6 +768,19 @@ export default function CourseBuilderPage() {
                   onToggle={(id) => toggleQuestion(id, 'add')}
                 />
               )}
+
+              <div className="pt-2 border-t border-gray-100">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={stepForm.is_required}
+                    onChange={(e) => setStepForm({ ...stepForm, is_required: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
+                  />
+                  <span className="text-sm font-medium text-gray-700">บังคับเรียนขั้นตอนนี้ (Lock)</span>
+                </label>
+                <p className="text-xs text-gray-500 ml-6 pt-0.5">ถ้าติ๊กออก ผู้เรียนจะสามารถกดข้ามขั้นตอนนี้หรือกระโดดไปเรียนจุดอื่นได้อิสระโดยไม่ต้องดูจบ</p>
+              </div>
 
               <div className="flex gap-2 pt-2">
                 <button onClick={() => setShowAddStep(false)} className="btn-secondary text-sm flex-1 py-2.5">

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     data: {
       title,
       description: description || null,
-      pass_score: pass_score || 80,
+      pass_score: pass_score ?? 80,
       order_num: (maxOrder._max.order_num || 0) + 1,
     },
   })
