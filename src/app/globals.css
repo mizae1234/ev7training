@@ -271,7 +271,7 @@
     padding: 2rem;
     max-width: 32rem;
     width: 100%;
-    max-height: 90vh;
+    max-height: 85vh;
     overflow-y: auto;
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
     animation: modalSlideUp 0.3s ease;

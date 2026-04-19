@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     where.OR = [
       { full_name: { contains: search, mode: 'insensitive' } },
       { national_id: { contains: search } },
+      { case_id: { contains: search, mode: 'insensitive' } },
     ]
   }
 
@@ -24,9 +25,11 @@ export async function GET(request: NextRequest) {
     orderBy: { created_at: 'desc' },
     select: {
       id: true,
+      case_id: true,
       full_name: true,
       national_id: true,
       phone: true,
+      car_model: true,
       project_type: true,
       status: true,
       onboarding_status: true,
@@ -39,7 +42,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { full_name, national_id, date_of_birth, phone, project_type } = body
+  const { full_name, national_id, date_of_birth, phone, project_type, case_id, car_model } = body
 
   if (!full_name || !national_id || !date_of_birth) {
     return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
@@ -56,10 +59,12 @@ export async function POST(request: NextRequest) {
 
   const driver = await prisma.driver.create({
     data: {
+      case_id: case_id || null,
       full_name,
       national_id,
       date_of_birth: new Date(date_of_birth),
       phone: phone || null,
+      car_model: car_model || null,
       project_type: project_type || null,
     },
   })

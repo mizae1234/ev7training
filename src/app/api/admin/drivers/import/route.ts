@@ -28,11 +28,12 @@ export async function POST(request: NextRequest) {
 
       await prisma.driver.create({
         data: {
+          case_id: d.case_id || null,
           full_name: d.full_name,
           national_id: d.national_id,
           date_of_birth: new Date(d.date_of_birth),
           phone: d.phone || null,
-          project_type: d.project_type || null,
+          car_model: d.car_model || null,
         },
       })
       success++

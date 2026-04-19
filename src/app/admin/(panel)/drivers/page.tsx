@@ -6,9 +6,11 @@ import { Search, Plus, Upload, Filter, ChevronRight, Users } from 'lucide-react'
 
 interface Driver {
   id: string
+  case_id: string | null
   full_name: string
   national_id: string
   phone: string | null
+  car_model: string | null
   project_type: string | null
   status: string
   onboarding_status: string
@@ -21,7 +23,7 @@ export default function DriversPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
-  const [addForm, setAddForm] = useState({ full_name: '', national_id: '', date_of_birth: '', phone: '', project_type: '' })
+  const [addForm, setAddForm] = useState({ full_name: '', national_id: '', date_of_birth: '', phone: '', project_type: '', case_id: '', car_model: '' })
   const [addError, setAddError] = useState('')
   const [addLoading, setAddLoading] = useState(false)
 
@@ -61,7 +63,7 @@ export default function DriversPage() {
         setAddError(data.error || 'เกิดข้อผิดพลาด')
       } else {
         setShowAddModal(false)
-        setAddForm({ full_name: '', national_id: '', date_of_birth: '', phone: '', project_type: '' })
+        setAddForm({ full_name: '', national_id: '', date_of_birth: '', phone: '', project_type: '', case_id: '', car_model: '' })
         fetchDrivers()
       }
     } catch {
@@ -147,10 +149,11 @@ export default function DriversPage() {
           <table>
             <thead>
               <tr>
+                <th>Case ID</th>
                 <th>ชื่อ-นามสกุล</th>
                 <th className="hidden sm:table-cell">เลขบัตรประชาชน</th>
                 <th className="hidden md:table-cell">เบอร์โทร</th>
-                <th>โครงการ</th>
+                <th>รุ่นรถ</th>
                 <th>สถานะ</th>
                 <th></th>
               </tr>
@@ -158,12 +161,13 @@ export default function DriversPage() {
             <tbody>
               {drivers.map((d) => (
                 <tr key={d.id}>
+                  <td className="font-mono text-sm font-semibold text-ev7-600">{d.case_id || '-'}</td>
                   <td className="font-medium">{d.full_name}</td>
                   <td className="hidden sm:table-cell font-mono text-sm">{d.national_id}</td>
                   <td className="hidden md:table-cell text-sm">{d.phone || '-'}</td>
                   <td>
-                    {d.project_type ? (
-                      <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-semibold">{d.project_type}</span>
+                    {d.car_model ? (
+                      <span className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-semibold">{d.car_model}</span>
                     ) : (
                       <span className="text-gray-400 text-sm">-</span>
                     )}
@@ -196,15 +200,27 @@ export default function DriversPage() {
               </div>
             )}
             <form onSubmit={handleAdd} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">ชื่อ-นามสกุล *</label>
-                <input
-                  type="text"
-                  value={addForm.full_name}
-                  onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })}
-                  className="input-field"
-                  required
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Case ID</label>
+                  <input
+                    type="text"
+                    value={addForm.case_id}
+                    onChange={(e) => setAddForm({ ...addForm, case_id: e.target.value })}
+                    className="input-field font-mono"
+                    placeholder="เลข Case ID"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">ชื่อ-นามสกุล *</label>
+                  <input
+                    type="text"
+                    value={addForm.full_name}
+                    onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })}
+                    className="input-field"
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">เลขบัตรประชาชน *</label>
@@ -237,21 +253,39 @@ export default function DriversPage() {
                   className="input-field"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">ประเภทโครงการ</label>
-                <input
-                  type="text"
-                  value={addForm.project_type}
-                  onChange={(e) => setAddForm({ ...addForm, project_type: e.target.value })}
-                  className="input-field"
-                  placeholder="เช่น EV7, GRAB, Lineman"
-                  list="project-types"
-                />
-                <datalist id="project-types">
-                  <option value="EV7" />
-                  <option value="GRAB" />
-                  <option value="Lineman" />
-                </datalist>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">รุ่นรถ</label>
+                  <input
+                    type="text"
+                    value={addForm.car_model}
+                    onChange={(e) => setAddForm({ ...addForm, car_model: e.target.value })}
+                    className="input-field"
+                    placeholder="เช่น AION Y PLUS"
+                    list="car-models-add"
+                  />
+                  <datalist id="car-models-add">
+                    {Array.from(new Set(drivers.map(d => d.car_model).filter(Boolean))).map(model => (
+                      <option key={model} value={model!} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">ประเภทโครงการ</label>
+                  <input
+                    type="text"
+                    value={addForm.project_type}
+                    onChange={(e) => setAddForm({ ...addForm, project_type: e.target.value })}
+                    className="input-field"
+                    placeholder="เช่น EV7, GRAB"
+                    list="project-types"
+                  />
+                  <datalist id="project-types">
+                    <option value="EV7" />
+                    <option value="GRAB" />
+                    <option value="Lineman" />
+                  </datalist>
+                </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1 py-3">

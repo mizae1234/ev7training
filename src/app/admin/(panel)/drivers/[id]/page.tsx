@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import { maskNationalId, formatDate } from '@/lib/utils'
 import Link from 'next/link'
-import { ArrowLeft, User, PlayCircle, ClipboardCheck, Award, Phone, Calendar, Hash, BookOpen, Briefcase } from 'lucide-react'
+import { ArrowLeft, User, PlayCircle, ClipboardCheck, Award, Phone, Calendar, Hash, BookOpen, Briefcase, Car, FileText } from 'lucide-react'
 import DeleteDriverButton from './DeleteDriverButton'
+import EditDriverButton from './EditDriverButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,13 @@ export default async function DriverDetailPage({ params }: { params: Promise<{ i
       certificates: { orderBy: { issued_at: 'desc' } },
     },
   })
+
+  const uniqueCarModelsResult = await prisma.driver.findMany({
+    where: { car_model: { not: null } },
+    select: { car_model: true },
+    distinct: ['car_model'],
+  })
+  const carModels = uniqueCarModelsResult.map(c => c.car_model as string).filter(Boolean)
 
   if (!driver) {
     return (
@@ -57,6 +65,12 @@ export default async function DriverDetailPage({ params }: { params: Promise<{ i
                 {statusBadge(driver.onboarding_status)}
               </div>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                {driver.case_id && (
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <FileText className="w-4 h-4" />
+                    Case ID: <span className="font-mono font-semibold text-ev7-600">{driver.case_id}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-gray-500">
                   <Hash className="w-4 h-4" />
                   <span className="font-mono">{driver.national_id}</span>
@@ -70,8 +84,8 @@ export default async function DriverDetailPage({ params }: { params: Promise<{ i
                   {driver.phone || '-'}
                 </div>
                 <div className="flex items-center gap-2 text-gray-500">
-                  <Briefcase className="w-4 h-4" />
-                  โครงการ: {driver.project_type || 'ไม่ระบุ'}
+                  <Car className="w-4 h-4" />
+                  รุ่นรถ: {driver.car_model || 'ไม่ระบุ'}
                 </div>
                 <div className="flex items-center gap-2 text-gray-500">
                   <User className="w-4 h-4" />
@@ -80,8 +94,10 @@ export default async function DriverDetailPage({ params }: { params: Promise<{ i
               </div>
             </div>
           </div>
-          {/* Delete Button */}
-          <DeleteDriverButton driverId={driver.id} />
+          <div className="flex flex-col gap-2 w-full sm:w-auto">
+            <EditDriverButton driver={driver} carModels={carModels} />
+            <DeleteDriverButton driverId={driver.id} />
+          </div>
         </div>
       </div>
 

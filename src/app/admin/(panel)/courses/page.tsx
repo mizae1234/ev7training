@@ -8,6 +8,7 @@ interface CourseItem {
   id: string
   title: string
   description: string | null
+  target_car_model: string | null
   pass_score: number
   is_active: boolean
   order_num: number
@@ -19,12 +20,24 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<CourseItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ title: '', description: '', pass_score: 80 })
+  const [form, setForm] = useState({ title: '', description: '', pass_score: 80, target_car_model: '' })
   const [creating, setCreating] = useState(false)
+  const [carModels, setCarModels] = useState<string[]>([])
 
   useEffect(() => {
     fetchCourses()
+    fetchCarModels()
   }, [])
+
+  const fetchCarModels = async () => {
+    try {
+      const res = await fetch('/api/admin/drivers/car-models')
+      const data = await res.json()
+      setCarModels(data.models || [])
+    } catch(err) {
+      console.error(err)
+    }
+  }
 
   const fetchCourses = async () => {
     try {
@@ -49,7 +62,7 @@ export default function CoursesPage() {
       })
       if (res.ok) {
         setShowCreate(false)
-        setForm({ title: '', description: '', pass_score: 80 })
+        setForm({ title: '', description: '', pass_score: 80, target_car_model: '' })
         fetchCourses()
       }
     } catch (err) {
@@ -135,6 +148,9 @@ export default function CoursesPage() {
                       <span>
                         {course.pass_score === 0 ? 'ไม่ต้องสอบ' : `คะแนนผ่าน ${course.pass_score}%`}
                       </span>
+                      {course.target_car_model && (
+                        <span className="bg-ev7-50 text-ev7-600 px-2 rounded-full font-medium">เฉพาะรุ่น: {course.target_car_model}</span>
+                      )}
                       <span>{course._count.attempts} ผู้เข้าเรียน</span>
                     </div>
                   </div>
@@ -185,6 +201,20 @@ export default function CoursesPage() {
                   rows={3}
                   placeholder="รายละเอียดหลักสูตร (ไม่บังคับ)"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">รุ่นรถที่กำหนด</label>
+                <input
+                  type="text"
+                  value={form.target_car_model}
+                  onChange={(e) => setForm({ ...form, target_car_model: e.target.value })}
+                  className="input-field"
+                  placeholder="เช่น AION Y PLUS (เว้นว่างไว้หากให้เห็นทุกรุ่น)"
+                  list="car-models-list"
+                />
+                <datalist id="car-models-list">
+                  {carModels.map(m => <option key={m} value={m} />)}
+                </datalist>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">คะแนนผ่าน (%)</label>

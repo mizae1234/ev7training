@@ -27,6 +27,7 @@ interface CourseData {
   id: string
   title: string
   description: string | null
+  target_car_model: string | null
   pass_score: number
   is_active: boolean
   steps: CourseStep[]
@@ -79,7 +80,8 @@ export default function CourseBuilderPage() {
 
   // Course editing
   const [editCourseInfo, setEditCourseInfo] = useState(false)
-  const [courseForm, setCourseForm] = useState({ title: '', description: '', pass_score: 80 })
+  const [courseForm, setCourseForm] = useState({ title: '', description: '', pass_score: 80, target_car_model: '' })
+  const [carModels, setCarModels] = useState<string[]>([])
 
   // Video upload
   const [uploading, setUploading] = useState(false)
@@ -102,6 +104,7 @@ export default function CourseBuilderPage() {
         title: data.title || '',
         description: data.description || '',
         pass_score: data.pass_score || 80,
+        target_car_model: data.target_car_model || '',
       })
     } catch (err) {
       console.error(err)
@@ -128,7 +131,18 @@ export default function CourseBuilderPage() {
 
   useEffect(() => {
     fetchCourse()
+    fetchCarModels()
   }, [fetchCourse])
+
+  const fetchCarModels = async () => {
+    try {
+      const res = await fetch('/api/admin/drivers/car-models')
+      const data = await res.json()
+      setCarModels(data.models || [])
+    } catch(err) {
+      console.error(err)
+    }
+  }
 
   // Save course info
   const handleSaveCourseInfo = async () => {
@@ -375,8 +389,23 @@ export default function CourseBuilderPage() {
                 rows={2}
                 placeholder="คำอธิบาย (ถ้ามี)"
               />
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-700">คะแนนผ่าน:</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">รุ่นรถเฉพาะ:</label>
+                  <input
+                    type="text"
+                    value={courseForm.target_car_model}
+                    onChange={(e) => setCourseForm({ ...courseForm, target_car_model: e.target.value })}
+                    className="input-field text-sm md:w-48"
+                    placeholder="เว้นว่างถ้าเห็นทุกรุ่น"
+                    list="course-car-models-list"
+                  />
+                  <datalist id="course-car-models-list">
+                    {carModels.map(m => <option key={m} value={m} />)}
+                  </datalist>
+                </div>
+                <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
+                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">คะแนนผ่าน:</label>
                 <input
                   type="number"
                   min={0}
@@ -397,6 +426,7 @@ export default function CourseBuilderPage() {
                 <button onClick={() => setEditCourseInfo(false)} className="btn-secondary text-sm py-1.5 px-4">
                   ยกเลิก
                 </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -413,8 +443,11 @@ export default function CourseBuilderPage() {
                 )}
               </div>
               {course.description && <p className="text-sm text-gray-500 mt-1">{course.description}</p>}
-              <p className="text-xs text-gray-400 mt-1">
-                {course.pass_score === 0 ? 'ไม่ต้องสอบ' : `คะแนนผ่าน ${course.pass_score}%`} • {course.steps.length} ขั้นตอน • {course._count.attempts} ผู้เข้าเรียน
+              <p className="text-xs text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
+                {course.target_car_model && <span className="bg-ev7-50 text-ev7-600 px-2 py-0.5 rounded text-[10px] font-bold">เฉพาะ: {course.target_car_model}</span>}
+                <span>{course.pass_score === 0 ? 'ไม่ต้องสอบ' : `คะแนนผ่าน ${course.pass_score}%`}</span>
+                <span>• {course.steps.length} ขั้นตอน</span>
+                <span>• {course._count.attempts} ผู้เข้าเรียน</span>
               </p>
             </div>
           )}

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   const certificates = await prisma.certificate.findMany({
-    include: { driver: { select: { full_name: true, national_id: true } } },
+    include: { driver: { select: { full_name: true, national_id: true, case_id: true, car_model: true } } },
     orderBy: { issued_at: 'desc' },
   })
   return NextResponse.json({ certificates })

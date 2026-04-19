@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -39,7 +41,7 @@ export async function PUT(
 ) {
   const { id } = await params
   const body = await request.json()
-  const { title, description, pass_score, is_active } = body
+  const { title, description, pass_score, is_active, target_car_model } = body
 
   const course = await prisma.course.update({
     where: { id },
@@ -48,6 +50,7 @@ export async function PUT(
       ...(description !== undefined && { description }),
       ...(pass_score !== undefined && { pass_score }),
       ...(is_active !== undefined && { is_active }),
+      ...(target_car_model !== undefined && { target_car_model: target_car_model || null }),
     },
   })
 

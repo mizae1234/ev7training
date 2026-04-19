@@ -12,8 +12,19 @@ export async function GET() {
 
   const driverId = session.user.id
 
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+    select: { car_model: true }
+  })
+
   const courses = await prisma.course.findMany({
-    where: { is_active: true },
+    where: { 
+      is_active: true,
+      OR: [
+        { target_car_model: null },
+        ...(driver?.car_model ? [{ target_car_model: driver.car_model }] : [])
+      ]
+    },
     orderBy: { order_num: 'asc' },
     include: {
       steps: {

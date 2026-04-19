@@ -22,7 +22,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { title, description, pass_score } = body
+  const { title, description, pass_score, target_car_model } = body
 
   if (!title) {
     return NextResponse.json({ error: 'กรุณาระบุชื่อหลักสูตร' }, { status: 400 })
@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       title,
       description: description || null,
       pass_score: pass_score ?? 80,
+      target_car_model: target_car_model || null,
       order_num: (maxOrder._max.order_num || 0) + 1,
     },
   })
