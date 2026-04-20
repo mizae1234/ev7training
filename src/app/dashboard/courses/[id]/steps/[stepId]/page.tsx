@@ -24,10 +24,10 @@ interface StepData {
   unlocked: boolean
 }
 
-interface QuizQuestion {
   id: string
   question_text: string
   options: string[]
+  optionsList?: { text: string; originalIndex: number }[]
 }
 
 interface QuizResult {
@@ -429,7 +429,13 @@ function QuizPlayer({
       // Fetch questions by IDs via driver-accessible endpoint
       const res = await fetch(`/api/driver/questions?ids=${stepQIds.join(',')}`)
       const data = await res.json()
-      setQuestions(data.questions || [])
+      
+      const qs = (data.questions || []).map((q: any) => {
+        const optionObjs = q.options.map((t: string, i: number) => ({ text: t, originalIndex: i }))
+        const shuffledOptions = [...optionObjs].sort(() => Math.random() - 0.5)
+        return { ...q, optionsList: shuffledOptions }
+      })
+      setQuestions(qs)
     } catch (err) {
       console.error(err)
     } finally {
@@ -655,25 +661,25 @@ function QuizPlayer({
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-6">{question.question_text}</h3>
           <div className="space-y-3">
-            {question.options.map((opt, i) => (
+            {question.optionsList?.map((opt, i) => (
               <button
-                key={i}
-                onClick={() => handleAnswer(question.id, i)}
+                key={opt.originalIndex}
+                onClick={() => handleAnswer(question.id, opt.originalIndex)}
                 className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                  answers[question.id] === i
+                  answers[question.id] === opt.originalIndex
                     ? 'border-ev7-500 bg-ev7-50 shadow-sm'
                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    answers[question.id] === i
+                    answers[question.id] === opt.originalIndex
                       ? 'bg-ev7-500 text-white'
                       : 'bg-gray-100 text-gray-500'
                   }`}>
                     {String.fromCharCode(65 + i)}
                   </div>
-                  <span className="text-sm">{opt}</span>
+                  <span className="text-sm">{opt.text}</span>
                 </div>
               </button>
             ))}
