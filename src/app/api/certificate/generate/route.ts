@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { PDFDocument, rgb } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
 import { maskNationalId } from '@/lib/utils'
 import QRCode from 'qrcode'
+import fs from 'fs'
+import path from 'path'
 
 export async function GET() {
   const session = await auth()
@@ -23,11 +26,16 @@ export async function GET() {
 
   // Generate PDF
   const pdfDoc = await PDFDocument.create()
+  pdfDoc.registerFontkit(fontkit)
+
   const page = pdfDoc.addPage([595.28, 841.89]) // A4
   const { width, height } = page.getSize()
 
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+  const fontRegularBytes = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'Kanit-Regular.ttf'))
+  const fontMediumBytes = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'Kanit-Medium.ttf'))
+
+  const font = await pdfDoc.embedFont(fontRegularBytes)
+  const fontBold = await pdfDoc.embedFont(fontMediumBytes)
 
   // Colors
   const green = rgb(0.02, 0.59, 0.41) // EV7 green
