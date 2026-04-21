@@ -11,6 +11,7 @@ interface CourseItem {
   target_car_model: string | null
   pass_score: number
   is_active: boolean
+  is_mandatory: boolean
   order_num: number
   steps: { id: string; title: string; step_type: string; order_num: number }[]
   _count: { attempts: number }
@@ -20,7 +21,7 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<CourseItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ title: '', description: '', pass_score: 80, target_car_model: '' })
+  const [form, setForm] = useState({ title: '', description: '', pass_score: 80, target_car_model: '', is_mandatory: true })
   const [creating, setCreating] = useState(false)
   const [carModels, setCarModels] = useState<string[]>([])
 
@@ -62,7 +63,7 @@ export default function CoursesPage() {
       })
       if (res.ok) {
         setShowCreate(false)
-        setForm({ title: '', description: '', pass_score: 80, target_car_model: '' })
+        setForm({ title: '', description: '', pass_score: 80, target_car_model: '', is_mandatory: true })
         fetchCourses()
       }
     } catch (err) {
@@ -131,6 +132,11 @@ export default function CoursesPage() {
                         <span className="badge badge-success">เปิดใช้</span>
                       ) : (
                         <span className="badge badge-gray">ปิดอยู่</span>
+                      )}
+                      {course.is_mandatory ? (
+                        <span className="badge border border-red-200 bg-red-50 text-red-600">บังคับ</span>
+                      ) : (
+                        <span className="badge border border-gray-200 bg-gray-50 text-gray-500">ไม่บังคับ</span>
                       )}
                     </div>
                     {course.description && (
@@ -230,6 +236,19 @@ export default function CoursesPage() {
                   className="input-field w-32"
                 />
                 <p className="text-xs text-gray-500 mt-2">ใส่ 0 หากเป็นคอร์สให้ความรู้ (Knowledge) ที่ไม่ต้องมีการสอบผ่าน</p>
+              </div>
+              <div className="flex items-start gap-3 mt-4 mb-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <input
+                  type="checkbox"
+                  id="course-mandatory-new"
+                  checked={form.is_mandatory}
+                  onChange={(e) => setForm({ ...form, is_mandatory: e.target.checked })}
+                  className="mt-0.5 w-4 h-4 text-ev7-600 rounded border-gray-300 focus:ring-ev7-500 cursor-pointer"
+                />
+                <label htmlFor="course-mandatory-new" className="text-sm text-gray-700 cursor-pointer">
+                  <span className="block font-semibold">เป็นหลักสูตรบังคับเรียน (Mandatory)</span>
+                  <span className="block text-xs text-gray-500 mt-0.5">สถานะคนขับจะผ่านต่อเมื่อเรียนหลักสูตรบังคับทั้งหมดครบถ้วน</span>
+                </label>
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowCreate(false)} className="btn-secondary flex-1 py-3">ยกเลิก</button>

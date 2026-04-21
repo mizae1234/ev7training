@@ -32,18 +32,48 @@ export async function PUT(
     }
     
     if (passed) {
-      const existingCert = await prisma.certificate.findFirst({
-        where: { driver_id }
-      })
-      if (!existingCert) {
-        await prisma.certificate.create({
-          data: { certificate_no: generateCertificateNo(), driver_id, score: 100 }
+      // Get driver's car model to filter relevant mandatory courses
+      const driverInfo = await prisma.driver.findUnique({ where: { id: driver_id } });
+      const driverCarModel = driverInfo?.car_model || null;
+
+      const mandatoryCourses = await prisma.course.findMany({
+        where: {
+          is_active: true,
+          is_mandatory: true,
+          OR: [
+            { target_car_model: null },      // หลักสูตรสำหรับทุกคน
+            { target_car_model: '' },         // หลักสูตรสำหรับทุกคน (ค่าว่าง)
+            ...(driverCarModel ? [{ target_car_model: driverCarModel }] : []),  // หลักสูตรเฉพาะรุ่นรถ
+          ]
+        }
+      });
+
+      const passedAttempts = await prisma.courseAttempt.findMany({
+        where: { driver_id, passed: true }
+      });
+      
+      const passedCourseIds = new Set(passedAttempts.map(a => a.course_id));
+      const hasPassedAllMandatory = mandatoryCourses.every(c => passedCourseIds.has(c.id));
+
+      if (hasPassedAllMandatory) {
+        const existingCert = await prisma.certificate.findFirst({
+          where: { driver_id }
+        })
+        if (!existingCert) {
+          await prisma.certificate.create({
+            data: { certificate_no: generateCertificateNo(), driver_id, score: 100 }
+          })
+        }
+        await prisma.driver.update({
+          where: { id: driver_id },
+          data: { onboarding_status: 'PASSED' }
+        })
+      } else {
+        await prisma.driver.update({
+          where: { id: driver_id },
+          data: { onboarding_status: 'WATCHING' }
         })
       }
-      await prisma.driver.update({
-        where: { id: driver_id },
-        data: { onboarding_status: 'PASSED' }
-      })
     } else {
       await prisma.driver.update({
         where: { id: driver_id },

@@ -30,6 +30,7 @@ interface CourseData {
   target_car_model: string | null
   pass_score: number
   is_active: boolean
+  is_mandatory: boolean
   steps: CourseStep[]
   attempts: any[]
   _count: { attempts: number }
@@ -80,7 +81,7 @@ export default function CourseBuilderPage() {
 
   // Course editing
   const [editCourseInfo, setEditCourseInfo] = useState(false)
-  const [courseForm, setCourseForm] = useState({ title: '', description: '', pass_score: 80, target_car_model: '' })
+  const [courseForm, setCourseForm] = useState({ title: '', description: '', pass_score: 80, target_car_model: '', is_mandatory: true })
   const [carModels, setCarModels] = useState<string[]>([])
 
   // Video upload
@@ -105,6 +106,7 @@ export default function CourseBuilderPage() {
         description: data.description || '',
         pass_score: data.pass_score || 80,
         target_car_model: data.target_car_model || '',
+        is_mandatory: data.is_mandatory ?? true,
       })
     } catch (err) {
       console.error(err)
@@ -148,13 +150,21 @@ export default function CourseBuilderPage() {
   const handleSaveCourseInfo = async () => {
     setSaving(true)
     try {
-      await fetch(`/api/admin/courses/${courseId}`, {
+      const res = await fetch(`/api/admin/courses/${courseId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(courseForm),
       })
+      if (!res.ok) {
+        const err = await res.json()
+        await modal.alert(err.error || 'บันทึกข้อมูลไม่สำเร็จ')
+        return
+      }
       setEditCourseInfo(false)
       fetchCourse()
+    } catch (error) {
+      console.error(error)
+      await modal.alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
     } finally {
       setSaving(false)
     }
@@ -389,6 +399,18 @@ export default function CourseBuilderPage() {
                 rows={2}
                 placeholder="คำอธิบาย (ถ้ามี)"
               />
+              <div className="flex items-center gap-2 mt-1 mb-2">
+                <input
+                  type="checkbox"
+                  id="course-edit-mandatory"
+                  checked={courseForm.is_mandatory}
+                  onChange={(e) => setCourseForm({ ...courseForm, is_mandatory: e.target.checked })}
+                  className="w-4 h-4 text-ev7-600 rounded border-gray-300 focus:ring-ev7-500 cursor-pointer"
+                />
+                <label htmlFor="course-edit-mandatory" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  ตั้งเป็นหลักสูตรบังคับเรียน (Mandatory)
+                </label>
+              </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-gray-700 whitespace-nowrap">รุ่นรถเฉพาะ:</label>
@@ -440,6 +462,11 @@ export default function CourseBuilderPage() {
                   <span className="badge badge-success">เปิดใช้</span>
                 ) : (
                   <span className="badge badge-gray">ปิดอยู่</span>
+                )}
+                {course.is_mandatory ? (
+                  <span className="badge border border-red-200 bg-red-50 text-red-600">บังคับ</span>
+                ) : (
+                  <span className="badge border border-gray-200 bg-gray-50 text-gray-500">ไม่บังคับ</span>
                 )}
               </div>
               {course.description && <p className="text-sm text-gray-500 mt-1">{course.description}</p>}

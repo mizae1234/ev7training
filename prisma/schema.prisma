@@ -127,6 +127,7 @@ model Course {
   pass_score       Int      @default(80)
   target_car_model String?
   is_active        Boolean  @default(true)
+  is_mandatory     Boolean  @default(true)
   order_num        Int      @default(0)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt

@@ -214,26 +214,51 @@ async function checkCourseCompletion(courseId: string, driverId: string, finalSc
       })
     }
     
-    // 2. Generate certificate if not exists
-    const existingCert = await prisma.certificate.findFirst({
-      where: { driver_id: driverId }
-    })
+    // Check if the driver has passed all mandatory courses relevant to them
+    const driver = await prisma.driver.findUnique({ where: { id: driverId } });
+    const driverCarModel = driver?.car_model || null;
+
+    const mandatoryCourses = await prisma.course.findMany({
+      where: {
+        is_active: true,
+        is_mandatory: true,
+        OR: [
+          { target_car_model: null },      // หลักสูตรสำหรับทุกคน
+          { target_car_model: '' },         // หลักสูตรสำหรับทุกคน (ค่าว่าง)
+          ...(driverCarModel ? [{ target_car_model: driverCarModel }] : []),  // หลักสูตรเฉพาะรุ่นรถ
+        ]
+      }
+    });
+
+    const passedAttempts = await prisma.courseAttempt.findMany({
+      where: { driver_id: driverId, passed: true }
+    });
     
-    if (!existingCert) {
-      const certNo = generateCertificateNo()
-      await prisma.certificate.create({
-        data: {
-          certificate_no: certNo,
-          driver_id: driverId,
-          score: finalScore,
-        }
+    const passedCourseIds = new Set(passedAttempts.map(a => a.course_id));
+    const hasPassedAllMandatory = mandatoryCourses.every(c => passedCourseIds.has(c.id));
+
+    if (hasPassedAllMandatory) {
+      // 2. Generate certificate if not exists
+      const existingCert = await prisma.certificate.findFirst({
+        where: { driver_id: driverId }
       })
       
-      // Update driver status
-      await prisma.driver.update({
-        where: { id: driverId },
-        data: { onboarding_status: 'PASSED' }
-      })
+      if (!existingCert) {
+        const certNo = generateCertificateNo()
+        await prisma.certificate.create({
+          data: {
+            certificate_no: certNo,
+            driver_id: driverId,
+            score: finalScore,
+          }
+        })
+        
+        // Update driver status
+        await prisma.driver.update({
+          where: { id: driverId },
+          data: { onboarding_status: 'PASSED' }
+        })
+      }
     }
     
     return true
