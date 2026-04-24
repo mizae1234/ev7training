@@ -12,6 +12,7 @@ export default async function middleware(request: NextRequest) {
     pathname === '/admin/login' ||
     pathname.startsWith('/verify') ||
     pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/external') ||
     pathname.startsWith('/api/verify') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')

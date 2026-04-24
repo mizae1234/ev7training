@@ -201,6 +201,22 @@ model CourseAttempt {
 }
 
 
+model ExternalApiLog {
+  id             String   @id @default(cuid())
+  endpoint       String
+  method         String   @default("POST")
+  request_body   Json
+  response_body  Json?
+  status_code    Int
+  ip_address     String?
+  api_key_used   String?
+  created_count  Int      @default(0)
+  failed_count   Int      @default(0)
+  created_at     DateTime @default(now())
+
+  @@map("external_api_logs")
+}
+
 enum StepType {
   VIDEO
   QUIZ
