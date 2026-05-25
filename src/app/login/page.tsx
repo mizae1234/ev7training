@@ -13,12 +13,6 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-
-  const handleDobChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '').slice(0, 8)
-    setDob(raw)
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -30,31 +24,38 @@ export default function LoginPage() {
       return
     }
 
-    if (dob.length !== 8) {
-      setError('กรุณากรอกวันเดือนปีเกิดให้ครบ 8 หลัก')
+    let isoDate = ''
+    let isPassword = false
+
+    if (!dob) {
+      setError('กรุณากรอกรหัสผ่าน หรือ วันเดือนปีเกิด')
       setLoading(false)
       return
     }
 
-    // Parse ddmmyyyy Buddhist Era -> yyyy-mm-dd Christian Era
-    const dd = dob.slice(0, 2)
-    const mm = dob.slice(2, 4)
-    const buddhistYear = parseInt(dob.slice(4, 8), 10)
-    const christianYear = buddhistYear - 543
-    const isoDate = `${christianYear}-${mm}-${dd}`
+    if (/^\d{8}$/.test(dob)) {
+      // Parse ddmmyyyy Buddhist Era -> yyyy-mm-dd Christian Era
+      const dd = dob.slice(0, 2)
+      const mm = dob.slice(2, 4)
+      const buddhistYear = parseInt(dob.slice(4, 8), 10)
+      const christianYear = buddhistYear - 543
+      isoDate = `${christianYear}-${mm}-${dd}`
 
-    // Validate date
-    const parsed = new Date(isoDate)
-    if (isNaN(parsed.getTime()) || parsed.toISOString().split('T')[0] !== isoDate) {
-      setError('วันเดือนปีเกิดไม่ถูกต้อง')
-      setLoading(false)
-      return
+      // Validate date
+      const parsed = new Date(isoDate)
+      if (isNaN(parsed.getTime()) || parsed.toISOString().split('T')[0] !== isoDate) {
+        setError('วันเดือนปีเกิดไม่ถูกต้อง')
+        setLoading(false)
+        return
+      }
+    } else {
+      isPassword = true
     }
 
     try {
       const result = await signIn('driver-login', {
         national_id: nationalId,
-        date_of_birth: isoDate,
+        ...(isPassword ? { password: dob } : { date_of_birth: isoDate }),
         redirect: false,
       })
 
@@ -119,18 +120,16 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                วันเดือนปีเกิด (พ.ศ.)
+                รหัสผ่าน / วันเดือนปีเกิด (พ.ศ.)
               </label>
               <input
-                type="text"
-                inputMode="numeric"
-                maxLength={8}
-                placeholder="เช่น 15032528"
+                type="password"
+                placeholder="รหัสผ่าน หรือ วันเดือนปีเกิด"
                 value={dob}
-                onChange={handleDobChange}
+                onChange={(e) => setDob(e.target.value)}
+                autoComplete="new-password"
                 className="input-field font-mono text-lg tracking-wider"
               />
-              <p className="text-xs text-gray-400 mt-1">{dob.length}/8 หลัก (วันเดือนปี พ.ศ.)</p>
             </div>
 
             <button
