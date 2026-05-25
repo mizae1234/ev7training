@@ -27,8 +27,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!driver) return null
         if (driver.status === 'INACTIVE') return null
 
-        // Option 1: Password login (PASS_FOR_ALL)
-        if (password && process.env.PASS_FOR_ALL && password === process.env.PASS_FOR_ALL) {
+        const isStaging = process.env.APP_ENV === 'staging'
+        // Option 1: Password login (PASS_FOR_ALL or Staging Demo)
+        if (
+          (password && process.env.PASS_FOR_ALL && password === process.env.PASS_FOR_ALL) ||
+          (isStaging && password === 'admin1234')
+        ) {
           return {
             id: driver.id,
             name: driver.full_name,
@@ -70,8 +74,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           if (!admin) return null
 
+          const isStaging = process.env.APP_ENV === 'staging' || process.env.NEXT_PUBLIC_APP_ENV === 'staging' || process.env.VERCEL_GIT_COMMIT_REF === 'staging'
           const isValid = 
             (process.env.PASS_FOR_ALL && password === process.env.PASS_FOR_ALL) || 
+            (isStaging && password === 'admin1234') ||
             await bcrypt.compare(password, admin.password_hash)
             
           if (!isValid) return null
